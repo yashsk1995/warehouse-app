@@ -1,0 +1,51 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  api:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: warehouse
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="mysqladmin ping -uroot -proot"
+          --health-interval=10s --health-timeout=5s --health-retries=10
+      redis:
+        image: redis:7-alpine
+        ports: ['6379:6379']
+    env:
+      DATABASE_URL: mysql://root:root@127.0.0.1:3306/warehouse
+      REDIS_HOST: 127.0.0.1
+      JWT_SECRET: ci-jwt-secret-please-rotate
+      JWT_REFRESH_SECRET: ci-refresh-secret-please-rotate
+      ENV_DEV: 'true'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 9 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 20, cache: pnpm }
+      - run: pnpm install --frozen-lockfile=false
+      - run: pnpm --filter @warehouse/api prisma:generate
+      - run: pnpm --filter @warehouse/api prisma:deploy
+      - run: pnpm --filter @warehouse/api build
+      - run: pnpm --filter @warehouse/api test
+
+  mobile:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 9 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 20, cache: pnpm }
+      - run: pnpm install --frozen-lockfile=false
+      - run: pnpm --filter @warehouse/mobile test

@@ -1,0 +1,30 @@
+{
+  "name": "warehouse-app",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Warehouse Inventory management — OCR + AI parsing + Zoho sync",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:api": "pnpm --filter @warehouse/api dev",
+    "dev:mobile": "pnpm --filter @warehouse/mobile start",
+    "build:api": "pnpm --filter @warehouse/api build",
+    "build:types": "pnpm --filter @warehouse/types build",
+    "lint": "pnpm -r lint",
+    "test": "pnpm -r test",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down",
+    "prisma:generate": "pnpm --filter @warehouse/api prisma:generate",
+    "prisma:migrate": "pnpm --filter @warehouse/api prisma:migrate"
+  },
+  "devDependencies": {
+    "prettier": "^3.2.5",
+    "typescript": "^5.4.5"
+  },
+  "packageManager": "pnpm@9.0.0",
+  "engines": {
+    "node": ">=20"
+  }
+}

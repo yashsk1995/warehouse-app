@@ -1,0 +1,157 @@
+// Warehouse Inventory — Prisma schema
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  USER
+  ADMIN
+}
+
+enum ActionType {
+  ADD
+  REMOVE
+}
+
+enum TransactionStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum ZohoSyncStatus {
+  NOT_SYNCED
+  PENDING
+  SUCCESS
+  FAILED
+}
+
+model User {
+  id           String   @id @default(cuid())
+  username     String   @unique
+  passwordHash String
+  role         UserRole @default(USER)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  uploadedTransactions InventoryTransaction[] @relation("UploadedBy")
+  approvedTransactions InventoryTransaction[] @relation("ApprovedBy")
+  refreshTokens        RefreshToken[]
+  comments             ApprovalComment[]
+
+  @@map("users")
+}
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  userId    String
+  tokenHash String   @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+model InventoryItem {
+  id          String   @id @default(cuid())
+  sku         String   @unique
+  productName String
+  quantity    Int      @default(0)
+  zohoItemId  String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  transactionItems InventoryTransactionItem[]
+
+  @@index([sku])
+  @@map("inventory_items")
+}
+
+model InventoryTransaction {
+  id              String            @id @default(cuid())
+  userId          String
+  actionType      ActionType
+  status          TransactionStatus @default(PENDING)
+  imageUrl        String            @db.VarChar(1024)
+  imageKey        String?           @db.VarChar(1024)
+  rawOcrText      String?           @db.LongText
+  parsedJson      Json?
+  approvedByUserId String?
+  approvedAt      DateTime?
+  rejectionReason String?           @db.Text
+  notes           String?           @db.Text
+  zohoSyncStatus  ZohoSyncStatus    @default(NOT_SYNCED)
+  zohoSyncError   String?           @db.Text
+  zohoSyncedAt    DateTime?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  user        User                       @relation("UploadedBy", fields: [userId], references: [id])
+  approvedBy  User?                      @relation("ApprovedBy", fields: [approvedByUserId], references: [id])
+  items       InventoryTransactionItem[]
+  comments    ApprovalComment[]
+  zohoLogs    ZohoSyncLog[]
+
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("inventory_transactions")
+}
+
+model InventoryTransactionItem {
+  id               String   @id @default(cuid())
+  transactionId    String
+  inventoryItemId  String?
+  sku              String
+  productName      String?
+  quantityBefore   Int      @default(0)
+  quantityApproved Int      @default(0)
+  quantityAfter    Int      @default(0)
+  createdAt        DateTime @default(now())
+
+  transaction   InventoryTransaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  inventoryItem InventoryItem?       @relation(fields: [inventoryItemId], references: [id])
+
+  @@index([transactionId])
+  @@index([sku])
+  @@map("inventory_transaction_items")
+}
+
+model ApprovalComment {
+  id            String   @id @default(cuid())
+  transactionId String
+  userId        String
+  comment       String   @db.Text
+  createdAt     DateTime @default(now())
+
+  transaction InventoryTransaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  user        User                 @relation(fields: [userId], references: [id])
+
+  @@index([transactionId])
+  @@map("approval_comments")
+}
+
+model ZohoSyncLog {
+  id              String   @id @default(cuid())
+  transactionId   String
+  requestPayload  Json?
+  responsePayload Json?
+  status          ZohoSyncStatus
+  error           String?  @db.Text
+  attempt         Int      @default(1)
+  createdAt       DateTime @default(now())
+
+  transaction InventoryTransaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+
+  @@index([transactionId])
+  @@map("zoho_sync_logs")
+}

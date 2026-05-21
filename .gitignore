@@ -1,0 +1,48 @@
+node_modules/
+dist/
+build/
+.next/
+.expo/
+.expo-shared/
+.cache/
+
+# env
+.env
+.env.local
+.env.*.local
+
+# logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# editor
+.vscode/
+.idea/
+*.swp
+
+# uploads (dev local storage)
+apps/api/uploads/*
+!apps/api/uploads/.gitkeep
+
+# Prisma
+apps/api/prisma/migrations/dev.db*
+
+# coverage
+coverage/
+
+# turbo
+.turbo/
+
+# TypeScript build info
+*.tsbuildinfo
+
+# Compiled seed (ts-node leaves these behind sometimes)
+apps/api/prisma/seed.js
+apps/api/prisma/seed.js.map
+apps/api/prisma/seed.d.ts

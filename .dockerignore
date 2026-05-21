@@ -1,0 +1,14 @@
+node_modules
+**/node_modules
+**/dist
+**/build
+**/.expo
+**/.next
+**/.cache
+**/coverage
+apps/api/uploads/*
+!apps/api/uploads/.gitkeep
+.env
+.env.*
+*.log
+.git
