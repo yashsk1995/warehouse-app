@@ -9,11 +9,13 @@ module.exports = () => ({
     name: 'Warehouse Inventory',
     slug: 'warehouse-inventory',
     version: '1.0.0',
+    runtimeVersion: { policy: 'appVersion' },
+    updates: {
+      url: 'https://u.expo.dev/6b1d11d2-e9a9-4830-9513-386983154d89',
+    },
     orientation: 'portrait',
-    icon: './assets/icon.png',
     userInterfaceStyle: 'automatic',
     splash: {
-      image: './assets/splash.png',
       resizeMode: 'contain',
       backgroundColor: '#0f172a',
     },
@@ -25,7 +27,6 @@ module.exports = () => ({
     android: {
       package: 'com.warehouse.inventory',
       adaptiveIcon: {
-        foregroundImage: './assets/adaptive-icon.png',
         backgroundColor: '#0f172a',
       },
       permissions: ['CAMERA', 'READ_EXTERNAL_STORAGE'],
