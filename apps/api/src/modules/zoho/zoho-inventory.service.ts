@@ -134,10 +134,12 @@ export class ZohoInventoryService {
         const delta = tx.actionType === ActionType.ADD ? item.quantityApproved : -item.quantityApproved;
         const req = { sku: item.sku, item_id: zohoItem.item_id, delta };
         requestPayload.push(req);
+        // Zoho enforces a 50-char limit on adjustment reason.
+        const shortId = tx.id.slice(-12);
         const res = await this.updateInventory(
           zohoItem.item_id,
           delta,
-          `warehouse-app txn:${tx.id} (${tx.actionType})`,
+          `WH ${tx.actionType} #${shortId}`,
         );
         responsePayload.push(res);
       }
@@ -161,12 +163,21 @@ export class ZohoInventoryService {
         }),
       ]);
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
+      // Capture axios response body (Zoho returns details like
+      // {"code":36004,"message":"..."}) so failures are diagnosable.
+      const axiosErr = err as { response?: { data?: unknown; status?: number }; message?: string };
+      const responseBody = axiosErr?.response?.data;
+      if (responseBody) responsePayload.push(responseBody);
+      const detail =
+        responseBody && typeof responseBody === 'object'
+          ? JSON.stringify(responseBody)
+          : axiosErr?.message ?? String(err);
+      const message = `[${axiosErr?.response?.status ?? '?'}] ${detail}`;
       this.logger.error(`Zoho sync failed for ${tx.id}: ${message}`);
       await this.prisma.$transaction([
         this.prisma.inventoryTransaction.update({
           where: { id: tx.id },
-          data: { zohoSyncStatus: ZohoSyncStatus.FAILED, zohoSyncError: message },
+          data: { zohoSyncStatus: ZohoSyncStatus.FAILED, zohoSyncError: message.slice(0, 2000) },
         }),
         this.prisma.zohoSyncLog.create({
           data: {
@@ -174,7 +185,7 @@ export class ZohoInventoryService {
             requestPayload: requestPayload as Prisma.InputJsonValue,
             responsePayload: responsePayload as Prisma.InputJsonValue,
             status: ZohoSyncStatus.FAILED,
-            error: message,
+            error: message.slice(0, 2000),
           },
         }),
       ]);
