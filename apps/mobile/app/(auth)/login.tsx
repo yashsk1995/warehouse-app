@@ -20,7 +20,10 @@ export default function LoginScreen() {
       router.replace('/(tabs)');
     },
     onError: (e: any) => {
-      setError(e?.response?.data?.message ?? 'Login failed');
+      const status = e?.response?.status;
+      if (status === 401) setError('Invalid username or password');
+      else if (e?.message?.includes('Network')) setError('Cannot reach server. Check your connection.');
+      else setError(e?.response?.data?.message ?? 'Login failed');
     },
   });
 
@@ -49,9 +52,11 @@ export default function LoginScreen() {
           mode="outlined"
           style={styles.input}
         />
-        <HelperText type="error" visible={!!error}>
-          {error}
-        </HelperText>
+        {error ? (
+          <Text style={{ color: '#dc2626', fontSize: 11, marginVertical: 8 }} selectable>
+            {error}
+          </Text>
+        ) : null}
         <Button
           mode="contained"
           loading={mutation.isPending}

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Image, ScrollView, StyleSheet, View, Alert } from 'react-native';
+import { Image, ScrollView, StyleSheet, View } from 'react-native';
 import {
   ActivityIndicator,
   Button,
@@ -41,30 +41,49 @@ export default function TransactionDetailScreen() {
     }
   }, [query.data]);
 
+  const [banner, setBanner] = useState<{ kind: 'success' | 'error'; text: string } | null>(null);
+
   const approveMut = useMutation({
     mutationFn: () => {
-      const items = Object.entries(editedQty).map(([sku, qty]) => ({ sku, quantityApproved: qty }));
+      const items = Object.entries(editedQty).map(([sku, qty]) => ({
+        sku,
+        quantityApproved: Number.isFinite(qty) ? qty : 0,
+      }));
+      console.log('[APPROVE] sending', { id, items, note: note?.trim() || undefined });
       return approveTransaction(String(id), items, note.trim() || undefined);
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      console.log('[APPROVE] success', data?.status, data?.zohoSyncStatus);
       qc.invalidateQueries({ queryKey: ['history'] });
       qc.invalidateQueries({ queryKey: ['inventory'] });
-      Alert.alert('Approved', 'Inventory updated & Zoho sync queued.');
-      router.back();
+      qc.invalidateQueries({ queryKey: ['transaction', id] });
+      setBanner({ kind: 'success', text: 'Approved. Inventory updated, Zoho sync queued.' });
+      // Defer navigation so banner is visible and any render of refreshed data settles first
+      setTimeout(() => router.back(), 800);
     },
-    onError: (e: any) =>
-      Alert.alert('Approve failed', e?.response?.data?.message ?? e?.message ?? 'Unknown error'),
+    onError: (e: any) => {
+      const status = e?.response?.status;
+      const body = e?.response?.data;
+      const detail = `status: ${status ?? 'n/a'}\nmessage: ${body?.message ?? e?.message ?? 'unknown'}\nbody: ${
+        body ? JSON.stringify(body).slice(0, 300) : 'n/a'
+      }`;
+      console.log('[APPROVE] error', detail);
+      setBanner({ kind: 'error', text: 'Approve failed.\n' + detail });
+    },
   });
 
   const rejectMut = useMutation({
     mutationFn: () => rejectTransaction(String(id), note.trim() || 'Rejected by admin'),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['history'] });
-      Alert.alert('Rejected');
-      router.back();
+      qc.invalidateQueries({ queryKey: ['transaction', id] });
+      setBanner({ kind: 'success', text: 'Rejected.' });
+      setTimeout(() => router.back(), 800);
     },
-    onError: (e: any) =>
-      Alert.alert('Reject failed', e?.response?.data?.message ?? e?.message ?? 'Unknown error'),
+    onError: (e: any) => {
+      const detail = e?.response?.data?.message ?? e?.message ?? 'unknown';
+      setBanner({ kind: 'error', text: 'Reject failed: ' + detail });
+    },
   });
 
   if (query.isLoading || !query.data) return <ActivityIndicator style={{ marginTop: 32 }} />;
@@ -182,11 +201,33 @@ export default function TransactionDetailScreen() {
             onChangeText={setNote}
             style={{ marginTop: 16 }}
           />
+          {banner ? (
+            <View
+              style={{
+                marginTop: 12,
+                padding: 12,
+                borderRadius: 8,
+                borderWidth: 1,
+                backgroundColor: banner.kind === 'success' ? '#dcfce7' : '#fee2e2',
+                borderColor: banner.kind === 'success' ? '#16a34a' : '#dc2626',
+              }}
+            >
+              <Text
+                selectable
+                style={{ color: banner.kind === 'success' ? '#166534' : '#991b1b', fontSize: 12 }}
+              >
+                {banner.text}
+              </Text>
+            </View>
+          ) : null}
           <View style={styles.actions}>
             <Button
               mode="outlined"
               icon="close"
-              onPress={() => rejectMut.mutate()}
+              onPress={() => {
+                setBanner(null);
+                rejectMut.mutate();
+              }}
               loading={rejectMut.isPending}
               disabled={rejectMut.isPending || approveMut.isPending}
               style={styles.actionBtn}
@@ -197,7 +238,10 @@ export default function TransactionDetailScreen() {
             <Button
               mode="contained"
               icon="check"
-              onPress={() => approveMut.mutate()}
+              onPress={() => {
+                setBanner(null);
+                approveMut.mutate();
+              }}
               loading={approveMut.isPending}
               disabled={approveMut.isPending || rejectMut.isPending}
               style={styles.actionBtn}
