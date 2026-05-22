@@ -11,6 +11,7 @@ import { STORAGE_SERVICE, StorageService } from '../storage/storage.interface';
 import { OcrService } from '../ocr/ocr.service';
 import { AiParserService } from '../ai-parser/ai-parser.service';
 import { TransactionsService } from '../transactions/transactions.service';
+import { ZohoInventoryService } from '../zoho/zoho-inventory.service';
 
 @Injectable()
 export class UploadService {
@@ -21,6 +22,7 @@ export class UploadService {
     private readonly ocr: OcrService,
     private readonly parser: AiParserService,
     private readonly transactions: TransactionsService,
+    private readonly zoho: ZohoInventoryService,
   ) {}
 
   async uploadAndProcess(params: {
@@ -66,6 +68,18 @@ export class UploadService {
           'No SKU + quantity lines detected. Make sure the sheet is well lit, the handwriting is clear, and each line has a numeric SKU followed by a pcs count.',
         rawOcrText: ocrResult.text,
       });
+    }
+
+    // Refresh JUST the SKUs in this upload from Zoho before creating the PENDING txn.
+    // This guarantees quantityBefore is current even if the catalog cron hasn't fired
+    // since the last Zoho-side change. Best-effort — won't block on Zoho hiccups.
+    try {
+      const refresh = await this.zoho.refreshSkusFromZoho(parsed.items.map((i) => i.sku));
+      this.logger.log(
+        `Pre-upload Zoho refresh: ${refresh.refreshed} refreshed, ${refresh.missing.length} missing, ${refresh.failed.length} failed`,
+      );
+    } catch (e) {
+      this.logger.warn(`Pre-upload Zoho refresh skipped: ${(e as Error).message}`);
     }
 
     return this.transactions.createPending({

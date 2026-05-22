@@ -144,6 +144,53 @@ export class ZohoInventoryService {
   }
 
   /**
+   * Refresh just the given SKUs from Zoho (single-item lookups, in parallel).
+   * Used by the upload flow so quantityBefore on a new PENDING transaction is
+   * never stale — even if the 30-min catalog cron hasn't fired since the last
+   * Zoho-side change. Best-effort: per-SKU failures are logged, not thrown.
+   */
+  async refreshSkusFromZoho(
+    skus: string[],
+  ): Promise<{ refreshed: number; missing: string[]; failed: string[] }> {
+    const unique = Array.from(new Set(skus.map((s) => s.trim()).filter(Boolean)));
+    const missing: string[] = [];
+    const failed: string[] = [];
+    let refreshed = 0;
+
+    await Promise.all(
+      unique.map(async (sku) => {
+        try {
+          const zohoItem = await this.getItemBySKU(sku);
+          if (!zohoItem) {
+            missing.push(sku);
+            return;
+          }
+          await this.prisma.inventoryItem.upsert({
+            where: { sku },
+            update: {
+              productName: zohoItem.name,
+              quantity: typeof zohoItem.stock_on_hand === 'number' ? zohoItem.stock_on_hand : 0,
+              zohoItemId: zohoItem.item_id,
+            },
+            create: {
+              sku,
+              productName: zohoItem.name,
+              quantity: typeof zohoItem.stock_on_hand === 'number' ? zohoItem.stock_on_hand : 0,
+              zohoItemId: zohoItem.item_id,
+            },
+          });
+          refreshed++;
+        } catch (e) {
+          this.logger.warn(`refreshSkusFromZoho failed for ${sku}: ${(e as Error).message}`);
+          failed.push(sku);
+        }
+      }),
+    );
+
+    return { refreshed, missing, failed };
+  }
+
+  /**
    * Update stock-on-hand by absolute value via an inventory adjustment.
    * Zoho's "inventoryadjustments" endpoint takes a delta per item.
    */
