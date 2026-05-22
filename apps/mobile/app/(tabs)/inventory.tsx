@@ -3,6 +3,7 @@ import { FlatList, RefreshControl, StyleSheet, View } from 'react-native';
 import { ActivityIndicator, Card, Searchbar, Text } from 'react-native-paper';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { getCurrentInventory } from '@/services/inventory.api';
+import { palette } from '@/theme/theme';
 
 export default function CurrentInventoryScreen() {
   const [search, setSearch] = useState('');
@@ -66,7 +67,12 @@ export default function CurrentInventoryScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1 },
-  card: { marginBottom: 10 },
+  root: { flex: 1, backgroundColor: palette.background },
+  card: {
+    marginBottom: 10,
+    backgroundColor: palette.surface,
+    borderWidth: 1,
+    borderColor: palette.border,
+  },
   row: { flexDirection: 'row', alignItems: 'center', gap: 12 },
 });

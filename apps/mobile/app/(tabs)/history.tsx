@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { getHistory } from '@/services/inventory.api';
 import type { TransactionStatus } from '@warehouse/types';
+import { palette } from '@/theme/theme';
 
 const STATUS_FILTERS: Array<{ key: TransactionStatus | 'ALL'; label: string }> = [
   { key: 'ALL', label: 'All' },
@@ -23,7 +24,7 @@ export default function HistoryScreen() {
   });
 
   return (
-    <View style={{ flex: 1 }}>
+    <View style={{ flex: 1, backgroundColor: palette.background }}>
       <View style={styles.filterRow}>
         {STATUS_FILTERS.map((f) => (
           <Chip
@@ -97,8 +98,13 @@ function StatusBadge({ status }: { status: TransactionStatus }) {
 const styles = StyleSheet.create({
   filterRow: { flexDirection: 'row', padding: 12, gap: 6, flexWrap: 'wrap' },
   chip: { marginRight: 4 },
-  card: { marginBottom: 10 },
-  thumb: { width: 72, height: 72, borderRadius: 8, backgroundColor: '#f1f5f9' },
+  card: {
+    marginBottom: 10,
+    backgroundColor: palette.surface,
+    borderWidth: 1,
+    borderColor: palette.border,
+  },
+  thumb: { width: 72, height: 72, borderRadius: 8, backgroundColor: palette.background },
   headerRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 },
   badge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999, borderWidth: 1 },
 });

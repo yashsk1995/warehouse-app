@@ -3,6 +3,7 @@ import { ActivityIndicator, Card, Text } from 'react-native-paper';
 import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { getHistory } from '@/services/inventory.api';
+import { palette } from '@/theme/theme';
 
 export default function ApprovalsScreen() {
   const router = useRouter();
@@ -17,6 +18,7 @@ export default function ApprovalsScreen() {
     <FlatList
       data={query.data?.data ?? []}
       keyExtractor={(t) => t.id}
+      style={{ backgroundColor: palette.background }}
       contentContainerStyle={{ padding: 12 }}
       refreshControl={<RefreshControl refreshing={query.isRefetching} onRefresh={() => query.refetch()} />}
       ListHeaderComponent={
@@ -48,6 +50,11 @@ export default function ApprovalsScreen() {
 }
 
 const styles = StyleSheet.create({
-  card: { marginBottom: 10 },
-  thumb: { width: 72, height: 72, borderRadius: 8, backgroundColor: '#f1f5f9' },
+  card: {
+    marginBottom: 10,
+    backgroundColor: palette.surface,
+    borderWidth: 1,
+    borderColor: palette.border,
+  },
+  thumb: { width: 72, height: 72, borderRadius: 8, backgroundColor: palette.background },
 });
