@@ -49,10 +49,14 @@ export class UploadService {
     });
 
     const ocrResult = await this.ocr.extractText(optimized, 'image/jpeg');
-    this.logger.debug(`OCR done: ${ocrResult.text.split('\n').length} lines`);
+    this.logger.log(
+      `OCR (${ocrResult.text.length} chars) ----\n${ocrResult.text}\n----`,
+    );
 
     const parsed = await this.parser.parse(ocrResult.text);
-    this.logger.debug(`Parser produced ${parsed.items.length} items`);
+    this.logger.log(
+      `Parser produced ${parsed.items.length} items: ${JSON.stringify(parsed.items)}`,
+    );
 
     if (parsed.items.length === 0) {
       // Don't create an empty PENDING txn — the admin would have nothing to approve.

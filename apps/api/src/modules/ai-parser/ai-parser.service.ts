@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import OpenAI from 'openai';
+import { z } from 'zod';
 import { ParsedSheet, ParsedSheetSchema } from '@warehouse/types';
 
 @Injectable()
@@ -39,9 +40,20 @@ export class AiParserService {
       raw = { items: [] };
     }
 
-    const parsed = ParsedSheetSchema.safeParse(raw);
+    // Coerce common AI-side variations BEFORE validating, so a tiny shape
+    // mismatch (e.g. notes: null) doesn't throw away an otherwise-valid items[].
+    const coerced = this.coerceRaw(raw);
+    const parsed = ParsedSheetSchema.safeParse(coerced);
     if (!parsed.success) {
-      this.logger.warn(`Parsed JSON failed schema validation: ${parsed.error.message}`);
+      this.logger.warn(
+        `Parsed JSON failed schema validation: ${JSON.stringify(parsed.error.issues)}`,
+      );
+      // Last-ditch salvage: if items[] alone is valid, use it.
+      const itemsOnly = z.object({ items: ParsedSheetSchema.shape.items }).safeParse(coerced);
+      if (itemsOnly.success) {
+        this.logger.warn(`Salvaging ${itemsOnly.data.items.length} items despite schema fail`);
+        return { items: itemsOnly.data.items };
+      }
       return { items: [] };
     }
     // De-dupe by normalized SKU.
@@ -50,7 +62,21 @@ export class AiParserService {
       const key = item.sku.trim().toLowerCase();
       if (!seen.has(key)) seen.set(key, { ...item, sku: item.sku.trim() });
     }
-    return { items: Array.from(seen.values()), notes: parsed.data.notes };
+    return { items: Array.from(seen.values()), notes: parsed.data.notes ?? undefined };
+  }
+
+  private coerceRaw(raw: unknown): unknown {
+    if (!raw || typeof raw !== 'object') return { items: [] };
+    const r = raw as Record<string, unknown>;
+    // Accept "data.items" or "result.items" if the model wraps the output.
+    const items = Array.isArray(r.items)
+      ? r.items
+      : Array.isArray((r as any).data?.items)
+        ? (r as any).data.items
+        : Array.isArray((r as any).result?.items)
+          ? (r as any).result.items
+          : [];
+    return { items, notes: typeof r.notes === 'string' ? r.notes : undefined };
   }
 }
 

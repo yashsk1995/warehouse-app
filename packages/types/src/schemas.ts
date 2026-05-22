@@ -23,7 +23,7 @@ export type ParsedItem = z.infer<typeof ParsedItemSchema>;
 
 export const ParsedSheetSchema = z.object({
   items: z.array(ParsedItemSchema),
-  notes: z.string().optional(),
+  notes: z.string().nullable().optional(),
 });
 export type ParsedSheet = z.infer<typeof ParsedSheetSchema>;
 
