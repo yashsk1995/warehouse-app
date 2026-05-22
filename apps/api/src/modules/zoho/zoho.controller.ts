@@ -18,4 +18,14 @@ export class ZohoController {
     await this.zoho.syncTransaction(id);
     return { ok: true };
   }
+
+  /**
+   * Pull all Zoho items into the local catalog. Useful once at setup and
+   * any time SKUs are added directly in Zoho. Safe to re-run — upsert by SKU.
+   */
+  @Post('sync-catalog')
+  async syncCatalog() {
+    const result = await this.zoho.syncCatalog();
+    return { ok: true, ...result };
+  }
 }

@@ -87,6 +87,63 @@ export class ZohoInventoryService {
   }
 
   /**
+   * Pull the entire Zoho item catalog into the local inventory_items table.
+   * Upserts by SKU — preserves local-only items, updates productName +
+   * quantity + zohoItemId for matched ones, creates new rows for unmatched.
+   * Returns counts so the caller can show "X created, Y updated, Z skipped".
+   */
+  async syncCatalog(): Promise<{ created: number; updated: number; skipped: number; total: number }> {
+    let page = 1;
+    const perPage = 200;
+    let created = 0;
+    let updated = 0;
+    let skipped = 0;
+    let total = 0;
+
+    for (;;) {
+      const { data } = await this.http.get('/items', {
+        headers: await this.authHeaders(),
+        params: { ...this.orgParams(), page, per_page: perPage },
+      });
+      const items: ZohoItem[] = data.items ?? [];
+      const pageContext = data.page_context ?? {};
+      if (items.length === 0) break;
+
+      for (const it of items) {
+        total++;
+        if (!it.sku || !it.sku.trim()) {
+          skipped++;
+          continue;
+        }
+        const sku = it.sku.trim();
+        const stock = typeof it.stock_on_hand === 'number' ? it.stock_on_hand : 0;
+        const existing = await this.prisma.inventoryItem.findUnique({ where: { sku } });
+        if (existing) {
+          await this.prisma.inventoryItem.update({
+            where: { sku },
+            data: { productName: it.name, quantity: stock, zohoItemId: it.item_id },
+          });
+          updated++;
+        } else {
+          await this.prisma.inventoryItem.create({
+            data: { sku, productName: it.name, quantity: stock, zohoItemId: it.item_id },
+          });
+          created++;
+        }
+      }
+
+      // Zoho paginates with page_context.has_more_page
+      if (!pageContext.has_more_page) break;
+      page++;
+    }
+
+    this.logger.log(
+      `Catalog sync: ${total} items from Zoho — created ${created}, updated ${updated}, skipped ${skipped}`,
+    );
+    return { created, updated, skipped, total };
+  }
+
+  /**
    * Update stock-on-hand by absolute value via an inventory adjustment.
    * Zoho's "inventoryadjustments" endpoint takes a delta per item.
    */
