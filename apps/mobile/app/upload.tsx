@@ -23,7 +23,16 @@ export default function UploadScreen() {
       router.replace(`/transaction/${txn.id}`);
     },
     onError: (e: any) => {
-      Alert.alert('Upload failed', e?.response?.data?.message ?? e?.message ?? 'Unknown error');
+      const status = e?.response?.status;
+      const body = e?.response?.data;
+      // 422 = parser returned no items — friendly user-facing message
+      if (status === 422) {
+        const msg = body?.message ?? 'No items detected';
+        const ocr = body?.rawOcrText ? `\n\nWhat we read:\n${body.rawOcrText}` : '';
+        Alert.alert('Could not read sheet', `${msg}${ocr}`);
+        return;
+      }
+      Alert.alert('Upload failed', body?.message ?? e?.message ?? 'Unknown error');
     },
   });
 

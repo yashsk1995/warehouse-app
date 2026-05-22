@@ -56,18 +56,22 @@ export class AiParserService {
 
 export const PARSER_SYSTEM_PROMPT = `You convert raw OCR text from handwritten warehouse inventory sheets into clean JSON.
 
-Each line typically describes one product: a numeric SKU code followed by quantity in pieces.
+Each line typically describes one product: a numeric SKU code followed by a quantity in pieces.
+The input may contain ONE line or MANY lines. Always extract every line that has both an SKU and a quantity.
 
-CRITICAL RULES:
-1. SKU is the leading numeric code on the line (typically 3-5 digits, e.g. "1275", "1132", "1558"). Output the SKU as a string with no spaces or padding.
-2. If a line contains arithmetic like "10 pcs + 5 pcs = 15 pcs", use ONLY the final total (15). NEVER use intermediate addends.
-3. If no "=" is present, sum all "<n> pcs" on the line.
-4. Skip lines that have no leading numeric SKU OR no quantity (headers, dates, notes, signatures).
-5. quantity must be a non-negative integer.
-6. confidence is your 0-1 belief in the parse for each item; lower it when the SKU digits or quantity were unclear in the OCR (look for "(?)" markers).
-7. Do NOT invent SKUs. If you can't read the leading number, skip that line.
+EXTRACTION RULES (read carefully):
+1. SKU is the leading numeric code on the line — usually 3 to 6 digits (e.g. "1275", "1132", "874"). Output as a string, no spaces or padding.
+2. Quantity is the number immediately followed by "pcs", "Pcs", "PCS", "pc", or "p" (case-insensitive). The number may be 1 to 5 digits.
+3. The separator between SKU and quantity can be "-", "—", ":", or whitespace.
+4. ARITHMETIC: if a line has an "=", use ONLY the right-hand total. e.g. "10 pcs + 5 pcs = 15 pcs" -> quantity 15. NEVER use the addends (10, 5).
+5. If a line has multiple "<n> pcs" with no "=", sum them.
+6. SKIP lines that lack EITHER a leading numeric SKU OR a quantity (headers, dates, notes, signatures, blank).
+7. quantity must be a non-negative integer.
+8. confidence is your 0-1 belief; lower it when digits are smudged or the OCR includes "(?)" markers.
+9. Do NOT invent SKUs. But DO extract every clear single-line entry — a one-line sheet with "1275 - 10 pcs" is a valid input and must return one item.
+10. Whitespace, capitalization, and punctuation in the OCR are all tolerated.
 
-Output schema (strict JSON):
+Output schema (strict JSON — return {"items":[]} only when literally nothing parseable is present):
 {
   "items": [
     { "sku": "string", "productName": null, "quantity": int, "confidence": 0..1, "raw": "string" }
@@ -75,18 +79,20 @@ Output schema (strict JSON):
   "notes": "string|null"
 }`;
 
-export const PARSER_FEWSHOT = `1275 - 10 pcs
+export const PARSER_FEWSHOT = `1275 - 10 Pcs
 1132 - 4 pcs + 2 pcs = 6 pcs
-1558 - 12 pcs
+1558 - 12 PCS
+874 : 3 pc
 1485 (?) - 3 pcs
 Date: 21/05
 note: 2 damaged boxes`;
 
 export const PARSER_FEWSHOT_OUTPUT = JSON.stringify({
   items: [
-    { sku: '1275', productName: null, quantity: 10, confidence: 0.99, raw: '1275 - 10 pcs' },
+    { sku: '1275', productName: null, quantity: 10, confidence: 0.99, raw: '1275 - 10 Pcs' },
     { sku: '1132', productName: null, quantity: 6, confidence: 0.98, raw: '1132 - 4 pcs + 2 pcs = 6 pcs' },
-    { sku: '1558', productName: null, quantity: 12, confidence: 0.99, raw: '1558 - 12 pcs' },
+    { sku: '1558', productName: null, quantity: 12, confidence: 0.99, raw: '1558 - 12 PCS' },
+    { sku: '874', productName: null, quantity: 3, confidence: 0.97, raw: '874 : 3 pc' },
     { sku: '1485', productName: null, quantity: 3, confidence: 0.72, raw: '1485 (?) - 3 pcs' },
   ],
   notes: '2 damaged boxes',

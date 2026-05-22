@@ -1,4 +1,10 @@
-import { BadRequestException, Inject, Injectable, Logger } from '@nestjs/common';
+import {
+  BadRequestException,
+  Inject,
+  Injectable,
+  Logger,
+  UnprocessableEntityException,
+} from '@nestjs/common';
 import sharp from 'sharp';
 import { ActionType } from '@prisma/client';
 import { STORAGE_SERVICE, StorageService } from '../storage/storage.interface';
@@ -47,6 +53,16 @@ export class UploadService {
 
     const parsed = await this.parser.parse(ocrResult.text);
     this.logger.debug(`Parser produced ${parsed.items.length} items`);
+
+    if (parsed.items.length === 0) {
+      // Don't create an empty PENDING txn — the admin would have nothing to approve.
+      // Surface a clear message to the user so they can retake the photo.
+      throw new UnprocessableEntityException({
+        message:
+          'No SKU + quantity lines detected. Make sure the sheet is well lit, the handwriting is clear, and each line has a numeric SKU followed by a pcs count.',
+        rawOcrText: ocrResult.text,
+      });
+    }
 
     return this.transactions.createPending({
       userId: params.userId,
