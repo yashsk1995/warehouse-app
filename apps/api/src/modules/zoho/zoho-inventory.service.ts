@@ -89,14 +89,23 @@ export class ZohoInventoryService {
   /**
    * Pull the entire Zoho item catalog into the local inventory_items table.
    * Upserts by SKU — preserves local-only items, updates productName +
-   * quantity + zohoItemId for matched ones, creates new rows for unmatched.
-   * Returns counts so the caller can show "X created, Y updated, Z skipped".
+   * quantity + zohoItemId ONLY when something actually differs. This keeps
+   * `updatedAt` meaningful (= "Zoho-side change last seen at") and avoids
+   * pointless writes on every cron tick (~636 rows × 48 ticks/day otherwise).
+   * Returns counts so the caller can show "X created, Y updated, Z unchanged".
    */
-  async syncCatalog(): Promise<{ created: number; updated: number; skipped: number; total: number }> {
+  async syncCatalog(): Promise<{
+    created: number;
+    updated: number;
+    unchanged: number;
+    skipped: number;
+    total: number;
+  }> {
     let page = 1;
     const perPage = 200;
     let created = 0;
     let updated = 0;
+    let unchanged = 0;
     let skipped = 0;
     let total = 0;
 
@@ -119,11 +128,19 @@ export class ZohoInventoryService {
         const stock = typeof it.stock_on_hand === 'number' ? it.stock_on_hand : 0;
         const existing = await this.prisma.inventoryItem.findUnique({ where: { sku } });
         if (existing) {
-          await this.prisma.inventoryItem.update({
-            where: { sku },
-            data: { productName: it.name, quantity: stock, zohoItemId: it.item_id },
-          });
-          updated++;
+          const drifted =
+            existing.productName !== it.name ||
+            existing.quantity !== stock ||
+            existing.zohoItemId !== it.item_id;
+          if (drifted) {
+            await this.prisma.inventoryItem.update({
+              where: { sku },
+              data: { productName: it.name, quantity: stock, zohoItemId: it.item_id },
+            });
+            updated++;
+          } else {
+            unchanged++;
+          }
         } else {
           await this.prisma.inventoryItem.create({
             data: { sku, productName: it.name, quantity: stock, zohoItemId: it.item_id },
@@ -138,9 +155,9 @@ export class ZohoInventoryService {
     }
 
     this.logger.log(
-      `Catalog sync: ${total} items from Zoho — created ${created}, updated ${updated}, skipped ${skipped}`,
+      `Catalog sync: ${total} items from Zoho — created ${created}, updated ${updated}, unchanged ${unchanged}, skipped ${skipped}`,
     );
-    return { created, updated, skipped, total };
+    return { created, updated, unchanged, skipped, total };
   }
 
   /**

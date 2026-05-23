@@ -1,0 +1,33 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(Get-PSDrive -PSProvider FileSystem | Where-Object { $_.Used } | Select-Object Name, @{N='Used\\(GB\\)';E={[math]::Round\\($_.Used/1GB,1\\)}}, @{N='Free\\(GB\\)';E={[math]::Round\\($_.Free/1GB,1\\)}}, @{N='Total\\(GB\\)';E={[math]::Round\\(\\($_.Used+$_.Free\\)/1GB,1\\)}} | Format-Table -AutoSize)",
+      "Bash(npx expo *)",
+      "Bash(curl -s -m 5 http://localhost:6000/health)",
+      "Bash(curl -s -m 5 -X POST http://localhost:6000/api/v1/auth/login -H \"Content-Type: application/json\" -d '{\"username\":\"admin\",\"password\":\"admin123\"}')",
+      "Bash(curl -s -m 10 https://alias-handle-gst-planes.trycloudflare.com/health)",
+      "Bash(curl -s -m 10 -X POST https://alias-handle-gst-planes.trycloudflare.com/api/v1/auth/login -H \"Content-Type: application/json\" -d '{\"username\":\"admin\",\"password\":\"admin123\"}')",
+      "Bash(eas build *)",
+      "Bash(tee /tmp/eas-build.log)",
+      "Bash(docker exec warehouse-mysql mysql -uroot -proot warehouse -e ' *)",
+      "Bash(cat \"/c/Users/yashk/AppData/Local/Temp/claude/c--Yash-warehouse-app/13632e4c-f69c-4d92-a362-90d6f5511798/tasks/bjczbknmk.output\" 2>&1 | head -30)",
+      "Read(//c/Users/yashk/AppData/Local/Temp/claude/c--Yash-warehouse-app/13632e4c-f69c-4d92-a362-90d6f5511798/tasks/**)",
+      "Bash(docker exec *)",
+      "PowerShell(mysql -uroot -proot warehouse -e \"SELECT id, action_type, status, zoho_sync_status, LEFT\\(COALESCE\\(zoho_sync_error,''\\),80\\) AS err, approved_at, created_at FROM inventory_transactions ORDER BY created_at DESC LIMIT 5;\" 2>&1)",
+      "Read(//c/Program Files/MySQL/**)",
+      "PowerShell(& \"C:\\\\Program Files\\\\MySQL\\\\MySQL Server 8.0\\\\bin\\\\mysql.exe\" -uroot -proot warehouse -e \"SELECT id, action_type, status, zoho_sync_status, LEFT\\(COALESCE\\(zoho_sync_error,''\\),80\\) AS err, approved_at, created_at FROM inventory_transactions ORDER BY created_at DESC LIMIT 5;\" 2>&1)",
+      "PowerShell(& \"C:\\\\Program Files\\\\MySQL\\\\MySQL Server 8.0\\\\bin\\\\mysql.exe\" -uroot -proot warehouse -e \"DESCRIBE inventory_transactions;\" 2>&1)",
+      "PowerShell(& \"C:\\\\Program Files\\\\MySQL\\\\MySQL Server 8.0\\\\bin\\\\mysql.exe\" -uroot -proot warehouse -e \"SELECT id, actionType, status, zohoSyncStatus, LEFT\\(COALESCE\\(zohoSyncError,''\\),120\\) AS err, approvedAt, createdAt FROM inventory_transactions ORDER BY createdAt DESC LIMIT 5;\" 2>&1)",
+      "PowerShell(& \"C:\\\\Program Files\\\\MySQL\\\\MySQL Server 8.0\\\\bin\\\\mysql.exe\" -uroot -proot warehouse -e \"SELECT id, actionType, status, zohoSyncStatus FROM inventory_transactions ORDER BY createdAt DESC LIMIT 5;\" 2>&1)",
+      "PowerShell($env:MYSQL_PWD='root'; & \"C:\\\\Program Files\\\\MySQL\\\\MySQL Server 8.0\\\\bin\\\\mysql.exe\" -uroot warehouse -e \"SELECT id, sku, productName, quantityBefore, quantityApproved, quantityAfter FROM inventory_transaction_items WHERE transactionId='cmpg9eupf00068y9rtr54xsyi';\")",
+      "PowerShell($env:MYSQL_PWD='root'; & \"C:\\\\Program Files\\\\MySQL\\\\MySQL Server 8.0\\\\bin\\\\mysql.exe\" -uroot warehouse -t -e \"SELECT id, sku, productName, quantityBefore, quantityApproved, quantityAfter FROM inventory_transaction_items WHERE transactionId='cmpg9eupf00068y9rtr54xsyi';\" 2>&1)",
+      "Bash(MYSQL_PWD=root \"/c/Program Files/MySQL/MySQL Server 8.0/bin/mysql.exe\" -uroot warehouse -e \"SELECT id, sku, productName, quantityBefore, quantityApproved, quantityAfter FROM inventory_transaction_items WHERE transactionId='cmpg9eupf00068y9rtr54xsyi';\")",
+      "PowerShell($env:MYSQL_PWD='root'; & \"C:\\\\Program Files\\\\MySQL\\\\MySQL Server 8.0\\\\bin\\\\mysql.exe\" -uroot warehouse -e \"SELECT LEFT\\(rawOcrText,400\\) AS ocr, LEFT\\(parsedJson,400\\) AS parsed FROM inventory_transactions WHERE id='cmpg9eupf00068y9rtr54xsyi';\" 2>&1 | Out-String)",
+      "Bash(node -e ' *)",
+      "PowerShell($env:MYSQL_PWD='root'; & \"C:\\\\Program Files\\\\MySQL\\\\MySQL Server 8.0\\\\bin\\\\mysql.exe\" -uroot warehouse -e \"SELECT transactionId, status, LEFT\\(error,500\\) AS err, LEFT\\(requestPayload,500\\) AS req, LEFT\\(responsePayload,500\\) AS resp FROM zoho_sync_logs WHERE transactionId='cmpgcc7xj000bovwsvu7lfb65' ORDER BY createdAt DESC LIMIT 1\\\\G\" 2>&1 | Out-String)",
+      "PowerShell($env:MYSQL_PWD='root'; & \"C:\\\\Program Files\\\\MySQL\\\\MySQL Server 8.0\\\\bin\\\\mysql.exe\" -uroot warehouse -e \"SELECT LEFT\\(error,1000\\) AS err, LEFT\\(responsePayload,800\\) AS resp FROM zoho_sync_logs WHERE transactionId='cmpgcc7xj000bovwsvu7lfb65' ORDER BY createdAt DESC LIMIT 1\\\\G\" 2>&1 | Out-String)",
+      "PowerShell($env:MYSQL_PWD='root'; & \"C:\\\\Program Files\\\\MySQL\\\\MySQL Server 8.0\\\\bin\\\\mysql.exe\" -uroot warehouse -e \"SELECT u.id, u.username, u.role, COUNT\\(t.id\\) AS uploaded_txns FROM users u LEFT JOIN inventory_transactions t ON t.userId = u.id GROUP BY u.id;\" 2>&1 | Select-String -NotMatch \"Warning\")",
+      "Bash(DATABASE_URL=mysql://root:root@localhost:3306/warehouse node -e ' *)"
+    ]
+  }
+}

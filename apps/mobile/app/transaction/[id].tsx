@@ -128,43 +128,56 @@ export default function TransactionDetailScreen() {
       </Card>
 
       <Text variant="titleMedium" style={styles.sectionTitle}>Parsed items</Text>
-      {tx.items.map((it) => (
-        <Card key={it.id} style={styles.itemCard} mode="outlined">
-          <Card.Content>
-            <Text variant="titleSmall">{it.sku}</Text>
-            {it.productName ? <Text variant="bodySmall" style={{ color: '#64748b' }}>{it.productName}</Text> : null}
-            <View style={styles.qtyRow}>
-              <View style={styles.qtyCell}>
-                <Text variant="labelSmall" style={{ color: '#64748b' }}>Before</Text>
-                <Text variant="titleMedium">{it.quantityBefore}</Text>
+      {tx.items.map((it) => {
+        const delta = editedQty[it.sku] ?? it.quantityApproved;
+        const isAdd = tx.actionType === 'ADD';
+        const computedAfter = isAdd ? it.quantityBefore + delta : it.quantityBefore - delta;
+        const deltaColor = isAdd ? '#16a34a' : '#dc2626';
+        return (
+          <Card key={it.id} style={styles.itemCard} mode="outlined">
+            <Card.Content>
+              <Text variant="titleSmall" style={{ fontWeight: '700' }}>{it.sku}</Text>
+              {it.productName ? (
+                <Text variant="bodySmall" style={{ color: '#64748b', marginTop: 2 }}>{it.productName}</Text>
+              ) : null}
+              <View style={styles.qtyRow}>
+                <View style={styles.qtyCell}>
+                  <Text style={styles.qtyLabel}>BEFORE</Text>
+                  <Text style={styles.qtyValue}>{it.quantityBefore}</Text>
+                </View>
+                <Text style={styles.qtyArrow}>{isAdd ? '+' : '−'}</Text>
+                <View style={styles.qtyCell}>
+                  <Text style={[styles.qtyLabel, { color: deltaColor }]}>
+                    {isAdd ? 'ADDING' : 'REMOVING'}
+                  </Text>
+                  {canActOnIt ? (
+                    <TextInput
+                      keyboardType="number-pad"
+                      value={String(delta)}
+                      mode="outlined"
+                      dense
+                      onChangeText={(v) =>
+                        setEditedQty((s) => ({ ...s, [it.sku]: Math.max(0, parseInt(v || '0', 10) || 0) }))
+                      }
+                      style={styles.qtyInput}
+                      contentStyle={styles.qtyInputContent}
+                      outlineColor={deltaColor}
+                      activeOutlineColor={deltaColor}
+                    />
+                  ) : (
+                    <Text style={[styles.qtyValue, { color: deltaColor }]}>{delta}</Text>
+                  )}
+                </View>
+                <Text style={styles.qtyArrow}>=</Text>
+                <View style={styles.qtyCell}>
+                  <Text style={styles.qtyLabel}>AFTER</Text>
+                  <Text style={[styles.qtyValue, styles.qtyAfter]}>{computedAfter}</Text>
+                </View>
               </View>
-              <View style={styles.qtyCell}>
-                <Text variant="labelSmall" style={{ color: '#64748b' }}>
-                  {tx.actionType === 'ADD' ? 'Adding' : 'Removing'}
-                </Text>
-                {canActOnIt ? (
-                  <TextInput
-                    keyboardType="number-pad"
-                    value={String(editedQty[it.sku] ?? it.quantityApproved)}
-                    mode="outlined"
-                    dense
-                    onChangeText={(v) =>
-                      setEditedQty((s) => ({ ...s, [it.sku]: Math.max(0, parseInt(v || '0', 10) || 0) }))
-                    }
-                    style={{ width: 80 }}
-                  />
-                ) : (
-                  <Text variant="titleMedium">{it.quantityApproved}</Text>
-                )}
-              </View>
-              <View style={styles.qtyCell}>
-                <Text variant="labelSmall" style={{ color: '#64748b' }}>After</Text>
-                <Text variant="titleMedium">{it.quantityAfter}</Text>
-              </View>
-            </View>
-          </Card.Content>
-        </Card>
-      ))}
+            </Card.Content>
+          </Card>
+        );
+      })}
 
       {tx.rawOcrText ? (
         <Card style={{ marginTop: 16 }} mode="outlined">
@@ -262,8 +275,14 @@ const styles = StyleSheet.create({
   divider: { marginVertical: 8 },
   sectionTitle: { marginTop: 20, marginBottom: 8, fontWeight: '700' },
   itemCard: { marginBottom: 8 },
-  qtyRow: { flexDirection: 'row', marginTop: 8, justifyContent: 'space-between' },
+  qtyRow: { flexDirection: 'row', marginTop: 12, alignItems: 'center' },
   qtyCell: { alignItems: 'center', flex: 1 },
+  qtyLabel: { fontSize: 10, fontWeight: '600', letterSpacing: 0.6, color: '#64748b', marginBottom: 4 },
+  qtyValue: { fontSize: 20, fontWeight: '700', color: '#0f172a' },
+  qtyAfter: { color: '#1d4ed8' },
+  qtyArrow: { fontSize: 18, fontWeight: '600', color: '#94a3b8', paddingHorizontal: 4, marginTop: 14 },
+  qtyInput: { width: 72, height: 40, backgroundColor: '#fff' },
+  qtyInputContent: { textAlign: 'center', fontSize: 18, fontWeight: '700', paddingHorizontal: 0 },
   actions: { flexDirection: 'row', gap: 8, marginTop: 16 },
   actionBtn: { flex: 1 },
 });

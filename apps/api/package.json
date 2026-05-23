@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
+    "postinstall": "prisma generate --schema=./prisma/schema.prisma || true",
     "build": "pnpm --filter @warehouse/types build && nest build",
     "dev": "pnpm --filter @warehouse/types build && dotenv -e ../../.env -- nest start --watch",
     "start": "dotenv -e ../../.env -- node dist/main.js",

@@ -2,7 +2,7 @@
 // Override API URL per build:
 //   EXPO_PUBLIC_API_BASE_URL=https://crisp-meadow-1234.trycloudflare.com/api/v1 npx expo start
 // Or set it in eas.json profile env for cloud builds.
-const DEFAULT_DEV_URL = 'http://10.0.2.2:3000/api/v1'; // Android emulator → host
+const DEFAULT_DEV_URL = 'http://10.0.2.2:6000/api/v1'; // Android emulator → host:6000
 
 module.exports = () => ({
   expo: {
