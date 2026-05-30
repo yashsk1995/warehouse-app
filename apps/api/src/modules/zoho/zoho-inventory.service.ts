@@ -304,7 +304,10 @@ export class ZohoInventoryService {
         adjustment_type: 'quantity',
         line_items: [lineItem],
       },
-      { headers: await this.authHeaders(), params: this.orgParams() },
+      {
+        headers: await this.authHeaders(),
+        params: { ...this.orgParams(), status: 'adjusted' },
+      },
     );
     return data;
   }
