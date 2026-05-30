@@ -76,9 +76,26 @@ model InventoryItem {
   @@map("inventory_items")
 }
 
+model Warehouse {
+  id               String   @id @default(cuid())
+  zohoWarehouseId  String   @unique
+  name             String
+  address          String?  @db.Text
+  isPrimary        Boolean  @default(false)
+  isActive         Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  transactions InventoryTransaction[]
+
+  @@index([isActive])
+  @@map("warehouses")
+}
+
 model InventoryTransaction {
   id              String            @id @default(cuid())
   userId          String
+  warehouseId     String?
   actionType      ActionType
   status          TransactionStatus @default(PENDING)
   imageUrl        String            @db.VarChar(1024)
@@ -97,6 +114,7 @@ model InventoryTransaction {
 
   user        User                       @relation("UploadedBy", fields: [userId], references: [id])
   approvedBy  User?                      @relation("ApprovedBy", fields: [approvedByUserId], references: [id])
+  warehouse   Warehouse?                 @relation(fields: [warehouseId], references: [id])
   items       InventoryTransactionItem[]
   comments    ApprovalComment[]
   zohoLogs    ZohoSyncLog[]
@@ -104,6 +122,7 @@ model InventoryTransaction {
   @@index([userId])
   @@index([status])
   @@index([createdAt])
+  @@index([warehouseId])
   @@map("inventory_transactions")
 }
 

@@ -28,4 +28,13 @@ export class ZohoController {
     const result = await this.zoho.syncCatalog();
     return { ok: true, ...result };
   }
+
+  /**
+   * Pull all Zoho warehouses into the local table. Safe to re-run — upsert by zohoWarehouseId.
+   */
+  @Post('sync-warehouses')
+  async syncWarehouses() {
+    const result = await this.zoho.syncWarehouses();
+    return { ok: true, ...result };
+  }
 }

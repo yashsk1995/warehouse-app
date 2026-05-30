@@ -37,14 +37,19 @@ export class UploadController {
     @CurrentUser() user: AuthUser,
     @UploadedFile() file: Express.Multer.File,
     @Body('actionType') actionType: string,
+    @Body('warehouseId') warehouseId: string,
   ) {
     const normalized = String(actionType ?? '').toUpperCase();
     if (normalized !== ActionType.ADD && normalized !== ActionType.REMOVE) {
       throw new BadRequestException(`actionType must be ADD or REMOVE`);
     }
+    if (!warehouseId || typeof warehouseId !== 'string') {
+      throw new BadRequestException('warehouseId is required');
+    }
     return this.upload.uploadAndProcess({
       userId: user.id,
       actionType: normalized as ActionType,
+      warehouseId,
       file,
     });
   }

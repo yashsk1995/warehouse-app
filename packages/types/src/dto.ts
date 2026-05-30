@@ -39,10 +39,20 @@ export interface ApprovalCommentDto {
   createdAt: string;
 }
 
+export interface WarehouseDto {
+  id: string;
+  zohoWarehouseId: string;
+  name: string;
+  address: string | null;
+  isPrimary: boolean;
+}
+
 export interface InventoryTransactionDto {
   id: string;
   userId: string;
   username: string;
+  warehouseId: string | null;
+  warehouseName: string | null;
   actionType: ActionType;
   status: TransactionStatus;
   imageUrl: string;

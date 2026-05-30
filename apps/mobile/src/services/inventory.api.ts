@@ -5,15 +5,18 @@ import type {
   PaginatedDto,
   ActionType,
   TransactionStatus,
+  WarehouseDto,
 } from '@warehouse/types';
 
 export async function uploadSheet(params: {
   uri: string;
   actionType: ActionType;
+  warehouseId: string;
   filename?: string;
 }): Promise<InventoryTransactionDto> {
   const form = new FormData();
   form.append('actionType', params.actionType);
+  form.append('warehouseId', params.warehouseId);
   form.append('image', {
     uri: params.uri,
     name: params.filename ?? 'sheet.jpg',
@@ -22,6 +25,11 @@ export async function uploadSheet(params: {
   const { data } = await api.post<InventoryTransactionDto>('/inventory/upload', form, {
     headers: { 'Content-Type': 'multipart/form-data' },
   });
+  return data;
+}
+
+export async function getWarehouses(): Promise<WarehouseDto[]> {
+  const { data } = await api.get<WarehouseDto[]>('/warehouses');
   return data;
 }
 

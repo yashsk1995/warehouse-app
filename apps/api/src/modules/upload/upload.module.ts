@@ -8,6 +8,7 @@ import { OcrModule } from '../ocr/ocr.module';
 import { AiParserModule } from '../ai-parser/ai-parser.module';
 import { TransactionsModule } from '../transactions/transactions.module';
 import { ZohoModule } from '../zoho/zoho.module';
+import { WarehousesModule } from '../warehouses/warehouses.module';
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { ZohoModule } from '../zoho/zoho.module';
     AiParserModule,
     TransactionsModule,
     ZohoModule,
+    WarehousesModule,
     MulterModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],

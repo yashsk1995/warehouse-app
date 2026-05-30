@@ -18,6 +18,7 @@ import { ZohoModule } from './modules/zoho/zoho.module';
 import { QueuesModule } from './modules/queues/queues.module';
 import { UploadModule } from './modules/upload/upload.module';
 import { HealthModule } from './modules/health/health.module';
+import { WarehousesModule } from './modules/warehouses/warehouses.module';
 
 @Module({
   imports: [
@@ -66,6 +67,7 @@ import { HealthModule } from './modules/health/health.module';
     QueuesModule,
     UploadModule,
     HealthModule,
+    WarehousesModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })

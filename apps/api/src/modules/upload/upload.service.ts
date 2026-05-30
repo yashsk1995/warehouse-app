@@ -12,6 +12,7 @@ import { OcrService } from '../ocr/ocr.service';
 import { AiParserService } from '../ai-parser/ai-parser.service';
 import { TransactionsService } from '../transactions/transactions.service';
 import { ZohoInventoryService } from '../zoho/zoho-inventory.service';
+import { WarehousesService } from '../warehouses/warehouses.service';
 
 @Injectable()
 export class UploadService {
@@ -23,11 +24,13 @@ export class UploadService {
     private readonly parser: AiParserService,
     private readonly transactions: TransactionsService,
     private readonly zoho: ZohoInventoryService,
+    private readonly warehouses: WarehousesService,
   ) {}
 
   async uploadAndProcess(params: {
     userId: string;
     actionType: ActionType;
+    warehouseId: string;
     file: Express.Multer.File;
   }) {
     if (!params.file?.buffer?.length) {
@@ -35,6 +38,11 @@ export class UploadService {
     }
     if (!params.file.mimetype.startsWith('image/')) {
       throw new BadRequestException('Only image uploads are accepted');
+    }
+    // Validate warehouse — must exist + be active.
+    const warehouse = await this.warehouses.findById(params.warehouseId);
+    if (!warehouse || !warehouse.isActive) {
+      throw new BadRequestException('Selected warehouse is invalid or inactive');
     }
 
     // Compress + normalize to JPEG so OCR + storage are predictable.
@@ -84,6 +92,7 @@ export class UploadService {
 
     return this.transactions.createPending({
       userId: params.userId,
+      warehouseId: params.warehouseId,
       actionType: params.actionType,
       imageUrl: stored.url,
       imageKey: stored.key,

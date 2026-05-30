@@ -16,6 +16,7 @@ export class TransactionsRepository {
       include: {
         user: { select: { id: true, username: true } },
         approvedBy: { select: { id: true, username: true } },
+        warehouse: { select: { id: true, name: true, zohoWarehouseId: true } },
         items: true,
         comments: { include: { user: { select: { id: true, username: true } } }, orderBy: { createdAt: 'asc' } },
       },
@@ -40,6 +41,7 @@ export class TransactionsRepository {
         include: {
           user: { select: { id: true, username: true } },
           approvedBy: { select: { id: true, username: true } },
+          warehouse: { select: { id: true, name: true, zohoWarehouseId: true } },
           items: true,
         },
         orderBy: { createdAt: 'desc' },

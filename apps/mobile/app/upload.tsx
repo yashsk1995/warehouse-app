@@ -1,11 +1,13 @@
 import { useState } from 'react';
-import { Image, ScrollView, StyleSheet, View, Alert } from 'react-native';
-import { ActivityIndicator, Button, Card, Text, IconButton } from 'react-native-paper';
+import { Image, ScrollView, StyleSheet, View, Alert, Pressable } from 'react-native';
+import { ActivityIndicator, Button, Card, Text, IconButton, Menu, Divider } from 'react-native-paper';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import * as ImageManipulator from 'expo-image-manipulator';
-import { useMutation } from '@tanstack/react-query';
-import { uploadSheet } from '@/services/inventory.api';
+import { useMutation, useQuery } from '@tanstack/react-query';
+import { getWarehouses, uploadSheet } from '@/services/inventory.api';
+import { palette } from '@/theme/theme';
 import type { ActionType } from '@warehouse/types';
 
 export default function UploadScreen() {
@@ -13,11 +15,22 @@ export default function UploadScreen() {
   const actionType: ActionType = params.actionType === 'REMOVE' ? 'REMOVE' : 'ADD';
   const router = useRouter();
   const [imageUri, setImageUri] = useState<string | null>(null);
+  const [warehouseId, setWarehouseId] = useState<string | null>(null);
+  const [warehouseMenuOpen, setWarehouseMenuOpen] = useState(false);
+
+  const warehousesQuery = useQuery({
+    queryKey: ['warehouses'],
+    queryFn: getWarehouses,
+    staleTime: 5 * 60 * 1000, // 5 min — list rarely changes
+  });
+
+  const selectedWarehouse = warehousesQuery.data?.find((w) => w.id === warehouseId) ?? null;
 
   const mutation = useMutation({
     mutationFn: () => {
       if (!imageUri) throw new Error('No image selected');
-      return uploadSheet({ uri: imageUri, actionType });
+      if (!warehouseId) throw new Error('No warehouse selected');
+      return uploadSheet({ uri: imageUri, actionType, warehouseId });
     },
     onSuccess: (txn) => {
       router.replace(`/transaction/${txn.id}`);
@@ -25,7 +38,6 @@ export default function UploadScreen() {
     onError: (e: any) => {
       const status = e?.response?.status;
       const body = e?.response?.data;
-      // 422 = parser returned no items — friendly user-facing message
       if (status === 422) {
         const msg = body?.message ?? 'No items detected';
         const ocr = body?.rawOcrText ? `\n\nWhat we read:\n${body.rawOcrText}` : '';
@@ -66,6 +78,8 @@ export default function UploadScreen() {
     setImageUri(result.uri);
   }
 
+  const canUpload = !!imageUri && !!warehouseId && !mutation.isPending;
+
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <View style={styles.headerRow}>
@@ -75,12 +89,57 @@ export default function UploadScreen() {
         </Text>
       </View>
 
+      {/* Warehouse selector — required */}
+      <Text style={styles.fieldLabel}>
+        Warehouse <Text style={{ color: palette.danger }}>*</Text>
+      </Text>
+      <Menu
+        visible={warehouseMenuOpen}
+        onDismiss={() => setWarehouseMenuOpen(false)}
+        anchor={
+          <Pressable onPress={() => setWarehouseMenuOpen(true)} style={styles.dropdown}>
+            <Text style={{ color: selectedWarehouse ? palette.text : palette.textMuted, flex: 1 }}>
+              {warehousesQuery.isLoading
+                ? 'Loading warehouses…'
+                : selectedWarehouse
+                  ? selectedWarehouse.name
+                  : 'Select a warehouse'}
+            </Text>
+            <MaterialCommunityIcons name="chevron-down" size={20} color={palette.textMuted} />
+          </Pressable>
+        }
+        contentStyle={{ backgroundColor: palette.surface, maxHeight: 360 }}
+      >
+        {warehousesQuery.data?.length ? (
+          warehousesQuery.data.map((w) => (
+            <Menu.Item
+              key={w.id}
+              title={w.name + (w.isPrimary ? '  (primary)' : '')}
+              leadingIcon={w.id === warehouseId ? 'check' : undefined}
+              onPress={() => {
+                setWarehouseId(w.id);
+                setWarehouseMenuOpen(false);
+              }}
+            />
+          ))
+        ) : (
+          <Menu.Item title="No warehouses available — run a Zoho sync" disabled />
+        )}
+      </Menu>
+      {warehousesQuery.error ? (
+        <Text style={styles.errText}>
+          Couldn&apos;t load warehouses. Pull-to-refresh or check connection.
+        </Text>
+      ) : null}
+
+      <Divider style={{ marginVertical: 16 }} />
+
       <Card mode="elevated" style={{ marginBottom: 16 }}>
         <Card.Content>
           {imageUri ? (
             <Image source={{ uri: imageUri }} style={styles.preview} resizeMode="contain" />
           ) : (
-            <Text style={{ textAlign: 'center', color: '#64748b', paddingVertical: 32 }}>
+            <Text style={{ textAlign: 'center', color: palette.textMuted, paddingVertical: 32 }}>
               Capture or pick a photo of the handwritten sheet.
             </Text>
           )}
@@ -99,12 +158,18 @@ export default function UploadScreen() {
       <Button
         mode="contained"
         icon="upload"
-        disabled={!imageUri || mutation.isPending}
+        disabled={!canUpload}
         onPress={() => mutation.mutate()}
         contentStyle={{ paddingVertical: 8 }}
         style={{ marginTop: 16 }}
       >
-        {mutation.isPending ? 'Reading inventory sheet…' : 'Upload & Parse'}
+        {mutation.isPending
+          ? 'Reading inventory sheet…'
+          : !warehouseId
+            ? 'Select a warehouse to continue'
+            : !imageUri
+              ? 'Capture or pick a photo'
+              : 'Upload & Parse'}
       </Button>
 
       {mutation.isPending ? <ActivityIndicator style={{ marginTop: 12 }} /> : null}
@@ -113,9 +178,21 @@ export default function UploadScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { padding: 16 },
+  container: { padding: 16, backgroundColor: palette.background },
   headerRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
   preview: { width: '100%', height: 360 },
   actions: { flexDirection: 'row', gap: 8 },
   actionBtn: { flex: 1 },
+  fieldLabel: { color: palette.textMuted, fontSize: 12, marginBottom: 6, marginLeft: 4 },
+  dropdown: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+    borderWidth: 1,
+    borderColor: palette.border,
+    borderRadius: 8,
+    backgroundColor: palette.surface,
+  },
+  errText: { color: palette.danger, fontSize: 12, marginTop: 6 },
 });

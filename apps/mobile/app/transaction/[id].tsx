@@ -103,6 +103,13 @@ export default function TransactionDetailScreen() {
 
       <Card style={{ marginTop: 12 }} mode="outlined">
         <Card.Content>
+          {tx.warehouseName ? (
+            <>
+              <Text variant="labelSmall" style={{ color: '#64748b' }}>Warehouse</Text>
+              <Text style={{ fontWeight: '600' }}>{tx.warehouseName}</Text>
+              <Divider style={styles.divider} />
+            </>
+          ) : null}
           <Text variant="labelSmall" style={{ color: '#64748b' }}>Uploaded</Text>
           <Text>
             {tx.username} • {new Date(tx.createdAt).toLocaleString()}

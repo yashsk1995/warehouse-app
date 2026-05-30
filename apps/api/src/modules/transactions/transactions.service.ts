@@ -40,6 +40,7 @@ export class TransactionsService {
    */
   async createPending(params: {
     userId: string;
+    warehouseId?: string;
     actionType: ActionType;
     imageUrl: string;
     imageKey: string;
@@ -50,6 +51,7 @@ export class TransactionsService {
       const created = await db.inventoryTransaction.create({
         data: {
           userId: params.userId,
+          warehouseId: params.warehouseId,
           actionType: params.actionType,
           status: TransactionStatus.PENDING,
           imageUrl: params.imageUrl,
@@ -209,6 +211,8 @@ export class TransactionsService {
       id: t.id,
       userId: t.userId,
       username: t.user.username,
+      warehouseId: t.warehouseId,
+      warehouseName: t.warehouse?.name ?? null,
       actionType: t.actionType,
       status: t.status,
       imageUrl: t.imageUrl,

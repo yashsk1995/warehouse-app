@@ -13,10 +13,12 @@ export class ZohoCatalogSyncProcessor extends WorkerHost {
   }
 
   async process(_job: Job): Promise<void> {
-    this.logger.log('Catalog cron fired — pulling Zoho items...');
-    const result = await this.zoho.syncCatalog();
+    this.logger.log('Catalog cron fired — syncing warehouses + items...');
+    // Warehouses first — items reference them in the upload flow.
+    const wh = await this.zoho.syncWarehouses();
+    const items = await this.zoho.syncCatalog();
     this.logger.log(
-      `Catalog cron done: ${result.total} items, +${result.created} created, ~${result.updated} updated, ${result.skipped} skipped`,
+      `Catalog cron done — warehouses: ${wh.total} (+${wh.created}, ~${wh.updated}); items: ${items.total} (+${items.created}, ~${items.updated})`,
     );
   }
 }

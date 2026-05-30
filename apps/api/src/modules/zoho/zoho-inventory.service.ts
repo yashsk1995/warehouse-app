@@ -11,6 +11,17 @@ interface ZohoItem {
   stock_on_hand: number;
 }
 
+interface ZohoWarehouse {
+  warehouse_id: string;
+  warehouse_name: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  country?: string;
+  is_primary?: boolean;
+  status?: string; // "active" or "inactive"
+}
+
 /**
  * ZohoInventoryService — handles OAuth, item lookup, and stock adjustments
  * for the Zoho Inventory API. Token refresh is automatic and cached in-process.
@@ -208,17 +219,90 @@ export class ZohoInventoryService {
   }
 
   /**
+   * Pull all warehouses from Zoho and upsert into local table.
+   * Diff-aware: only writes when name/address/isPrimary/isActive actually changed.
+   */
+  async syncWarehouses(): Promise<{
+    created: number;
+    updated: number;
+    unchanged: number;
+    total: number;
+  }> {
+    const { data } = await this.http.get('/warehouses', {
+      headers: await this.authHeaders(),
+      params: this.orgParams(),
+    });
+    const warehouses: ZohoWarehouse[] = data.warehouses ?? [];
+
+    let created = 0;
+    let updated = 0;
+    let unchanged = 0;
+
+    for (const w of warehouses) {
+      const address = [w.address, w.city, w.state, w.country].filter(Boolean).join(', ') || null;
+      const isPrimary = !!w.is_primary;
+      const isActive = (w.status ?? 'active').toLowerCase() === 'active';
+
+      const existing = await this.prisma.warehouse.findUnique({
+        where: { zohoWarehouseId: w.warehouse_id },
+      });
+
+      if (existing) {
+        const drifted =
+          existing.name !== w.warehouse_name ||
+          existing.address !== address ||
+          existing.isPrimary !== isPrimary ||
+          existing.isActive !== isActive;
+        if (drifted) {
+          await this.prisma.warehouse.update({
+            where: { zohoWarehouseId: w.warehouse_id },
+            data: { name: w.warehouse_name, address, isPrimary, isActive },
+          });
+          updated++;
+        } else {
+          unchanged++;
+        }
+      } else {
+        await this.prisma.warehouse.create({
+          data: {
+            zohoWarehouseId: w.warehouse_id,
+            name: w.warehouse_name,
+            address,
+            isPrimary,
+            isActive,
+          },
+        });
+        created++;
+      }
+    }
+
+    this.logger.log(
+      `Warehouse sync: ${warehouses.length} from Zoho — created ${created}, updated ${updated}, unchanged ${unchanged}`,
+    );
+    return { created, updated, unchanged, total: warehouses.length };
+  }
+
+  /**
    * Update stock-on-hand by absolute value via an inventory adjustment.
    * Zoho's "inventoryadjustments" endpoint takes a delta per item.
+   * Pass `warehouseId` (Zoho's internal id) to target a specific warehouse;
+   * omit for the org-default warehouse.
    */
-  async updateInventory(itemId: string, delta: number, reason: string): Promise<unknown> {
+  async updateInventory(
+    itemId: string,
+    delta: number,
+    reason: string,
+    warehouseId?: string,
+  ): Promise<unknown> {
+    const lineItem: Record<string, unknown> = { item_id: itemId, quantity_adjusted: delta };
+    if (warehouseId) lineItem.warehouse_id = warehouseId;
     const { data } = await this.http.post(
       '/inventoryadjustments',
       {
         date: new Date().toISOString().slice(0, 10),
         reason,
         adjustment_type: 'quantity',
-        line_items: [{ item_id: itemId, quantity_adjusted: delta }],
+        line_items: [lineItem],
       },
       { headers: await this.authHeaders(), params: this.orgParams() },
     );
@@ -235,7 +319,7 @@ export class ZohoInventoryService {
   async syncTransaction(transactionId: string): Promise<void> {
     const tx = await this.prisma.inventoryTransaction.findUnique({
       where: { id: transactionId },
-      include: { items: true },
+      include: { items: true, warehouse: true },
     });
     if (!tx) throw new Error(`Transaction ${transactionId} not found`);
     if (tx.status !== 'APPROVED') {
@@ -244,6 +328,7 @@ export class ZohoInventoryService {
 
     const requestPayload: unknown[] = [];
     const responsePayload: unknown[] = [];
+    const zohoWarehouseId = tx.warehouse?.zohoWarehouseId;
 
     try {
       for (const item of tx.items) {
@@ -253,7 +338,12 @@ export class ZohoInventoryService {
           continue;
         }
         const delta = tx.actionType === ActionType.ADD ? item.quantityApproved : -item.quantityApproved;
-        const req = { sku: item.sku, item_id: zohoItem.item_id, delta };
+        const req = {
+          sku: item.sku,
+          item_id: zohoItem.item_id,
+          delta,
+          warehouse_id: zohoWarehouseId,
+        };
         requestPayload.push(req);
         // Zoho enforces a 50-char limit on adjustment reason.
         const shortId = tx.id.slice(-12);
@@ -261,6 +351,7 @@ export class ZohoInventoryService {
           zohoItem.item_id,
           delta,
           `WH ${tx.actionType} #${shortId}`,
+          zohoWarehouseId,
         );
         responsePayload.push(res);
       }
