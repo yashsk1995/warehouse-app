@@ -16,12 +16,13 @@ export class S3StorageService implements StorageService {
   constructor(cfg: ConfigService) {
     this.bucket = cfg.get<string>('AWS_S3_BUCKET') ?? '';
     this.region = cfg.get<string>('AWS_REGION') ?? 'ap-south-1';
+    const accessKeyId = cfg.get<string>('AWS_ACCESS_KEY_ID');
+    const secretAccessKey = cfg.get<string>('AWS_SECRET_ACCESS_KEY');
     this.client = new S3Client({
       region: this.region,
-      credentials: {
-        accessKeyId: cfg.get<string>('AWS_ACCESS_KEY_ID') ?? '',
-        secretAccessKey: cfg.get<string>('AWS_SECRET_ACCESS_KEY') ?? '',
-      },
+      ...(accessKeyId && secretAccessKey
+        ? { credentials: { accessKeyId, secretAccessKey } }
+        : {}),
     });
   }
 

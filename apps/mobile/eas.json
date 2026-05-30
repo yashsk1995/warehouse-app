@@ -27,10 +27,10 @@
     "production": {
       "channel": "production",
       "android": {
-        "buildType": "app-bundle"
+        "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_API_BASE_URL": "https://api.your-prod-domain.com/api/v1"
+        "EXPO_PUBLIC_API_BASE_URL": "https://ledwarehouseapp.com/api/v1"
       }
     }
   },
